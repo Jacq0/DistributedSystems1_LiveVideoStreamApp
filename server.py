@@ -1,6 +1,6 @@
 from flask import Flask, render_template, Response
 from camera import Camera
-from django.http import HttpResponse
+from threading import Thread
 
 app=Flask(__name__)
 
@@ -15,7 +15,7 @@ def gen(camera):
          b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
-def video_feed():
+def video_feed(): 
     return Response(gen(Camera()), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__=='__main__':
