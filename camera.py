@@ -6,11 +6,18 @@ import os
 import numpy as np
 
 class Camera():
+
+    known_encodings = []
+    frame_count=0
+
     def __init__(self):        
         self.cap = cv2.VideoCapture(0)  # Prepare the camera...
+        self.set_cam_res(320, 240, self.cap)
         self.classifier = cv2.CascadeClassifier('classifier\haarcascade_frontalface_default.xml') #haarscascade classifier
         print("Camera warming up ...")
         self.encode_faces()
+        self.known_encodings = self.load_faces()
+        
 
     def get_frame(self):
        ret, frame = self.cap.read()
@@ -25,21 +32,34 @@ class Camera():
        return frame
 
     def detect_faces(self, frame):
-        data_enc = pickle.loads(open(os.getcwd() + '\\encodings.pickle', 'rb').read())
+        if self.frame_count%2 == 0: #only process every second frame
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            boxes = fr.face_locations(frame_rgb, model='hog')
+            frame_enc = fr.face_encodings(frame_rgb, boxes)
 
-        print(data_enc)
-
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_enc = fr.face_encodings(frame_rgb)
-
-        for enc in data_enc:
-            for face in frame_enc:
-                results = fr.compare_faces(np.array(enc['encoding']), face)
+            for i in range(0, len(frame_enc)):
+                results = fr.compare_faces(self.known_encodings, frame_enc[i], 0.85)
 
                 if results[0] == True:
-                    print("Found a recognised face " +  enc['name'])
+                    print("Found a recognised face")
+                    self.draw_rects(frame, boxes[i], True)
+                else:
+                    self.draw_rects(frame, boxes[i], False)
+                    
 
+        self.frame_count += 1
         return frame
+
+    def load_faces(self):
+        data_enc = pickle.loads(open(os.getcwd() + '\\encodings.pickle', 'rb').read())
+        encodings = []
+
+        for enc in data_enc:
+            encodings.append(enc['encoding'])
+
+        print(data_enc, " KNOWN ENCODINGS")
+        
+        return encodings
 
     def encode_faces(self):
         encoding_data = []
@@ -62,3 +82,15 @@ class Camera():
         
     def release_camera(self):
         self.cap.release()
+    
+    def set_cam_res(self, w, h, cap):
+        cap.set(3, w)
+        cap.set(4, h)
+
+    def draw_rects(self, frame, box, recognised):
+        color = (0,0,255)
+
+        if recognised:
+            color = (0,255,0)
+
+        cv2.rectangle(frame, (box[3], box[0]), (box[1], box[2]), color, 2)
