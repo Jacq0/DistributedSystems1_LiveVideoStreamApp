@@ -1,3 +1,5 @@
 pip install imutils
 pip install dlib
 pip install face_recognition
+pip install python-opencv
+pip install imutils
